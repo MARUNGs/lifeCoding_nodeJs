@@ -5,6 +5,14 @@ var qs = require('querystring');
 var template = require('./lib/template.js');
 var path = require('path');
 var sanitizeHtml = require('sanitize-html');
+var mysql = require('mysql');
+var db = mysql.createConnection({ // mysql 접속 설정
+  host: 'localhost',
+  user: 'root',
+  password: '111111',
+  database: 'opentutorials'
+});
+db.connect(); // 실제 접속
 
 var app = http.createServer(function(request,response){
     var _url = request.url;
@@ -13,42 +21,51 @@ var app = http.createServer(function(request,response){
 
     if(pathname === '/') {
       if(queryData.id === undefined) {
-          fs.readdir('./data', function(error, fileList) {
-            var title = 'Welcome';
-            var description = 'Hello, Node.js';
-            var list = template.list(fileList);
-            var html = template.html(title, 
-                                      list, 
-                                      `<h2>${title}</h2>${description}`, 
-                                      `<a href="/create">create</a>`);
+          // fs.readdir('./data', function(error, fileList) {
+          //   var title = 'Welcome';
+          //   var description = 'Hello, Node.js';
+          //   var list = template.list(fileList);
+          //   var html = template.html(title, 
+          //                             list, 
+          //                             `<h2>${title}</h2>${description}`, 
+          //                             `<a href="/create">create</a>`);
+          //   response.writeHead(200);
+          //   response.end(html);
+          // });
+
+          // 이제는 DB에 접근하여 DB 정보를 출력할 것이다.
+          db.query(`SELECT * FROM topic`, function(error, topics, fields) {
+            console.log(topics);
             response.writeHead(200);
-            response.end(html);
+            response.end('Success');
           });
       } else {
-        fs.readdir('./data', function(error, fileList) {
-          var filteredId = path.parse(queryData.id).base;
-          fs.readFile(`data/${filteredId}`, 'utf8', function(err, description) {
-            var title = queryData.id;
-            var sanitizedTitle = sanitizeHtml(title); // html 소독하기
-            var sanitizedDescription = sanitizeHtml(description, {
-              allowdTags: ['h1'] // 특정 태그는 소독하지 않고 유지하기
-            });
-            var list = template.list(fileList);
-            var html = template.html(sanitizedTitle, 
-                                      list, 
-                                      `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-                                      `<a href="/create">create</a>
-                                        <a href="/update?id=${sanitizedTitle}">update</a>
-                                        <form action="/delete_process" method="post">
-                                        <input type="hidden" name="id" value="${sanitizedTitle}"/>
-                                        <input type="submit" value="delete" />
-                                        </form>`
-            );
+        // fs.readdir('./data', function(error, fileList) {
+        //   var filteredId = path.parse(queryData.id).base;
+        //   fs.readFile(`data/${filteredId}`, 'utf8', function(err, description) {
+        //     var title = queryData.id;
+        //     var sanitizedTitle = sanitizeHtml(title); // html 소독하기
+        //     var sanitizedDescription = sanitizeHtml(description, {
+        //       allowdTags: ['h1'] // 특정 태그는 소독하지 않고 유지하기
+        //     });
+        //     var list = template.list(fileList);
+        //     var html = template.html(sanitizedTitle, 
+        //                               list, 
+        //                               `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
+        //                               `<a href="/create">create</a>
+        //                                 <a href="/update?id=${sanitizedTitle}">update</a>
+        //                                 <form action="/delete_process" method="post">
+        //                                 <input type="hidden" name="id" value="${sanitizedTitle}"/>
+        //                                 <input type="submit" value="delete" />
+        //                                 </form>`
+        //     );
 
-            response.writeHead(200);
-            response.end(html);
-          });
-        });
+        //     response.writeHead(200);
+        //     response.end(html);
+        //   });
+        // });
+
+        
       }
     } else if(pathname === '/create') {
       fs.readdir('./data', function(error, fileList) {
