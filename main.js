@@ -21,51 +21,46 @@ var app = http.createServer(function(request,response){
 
     if(pathname === '/') {
       if(queryData.id === undefined) {
-          // fs.readdir('./data', function(error, fileList) {
-          //   var title = 'Welcome';
-          //   var description = 'Hello, Node.js';
-          //   var list = template.list(fileList);
-          //   var html = template.html(title, 
-          //                             list, 
-          //                             `<h2>${title}</h2>${description}`, 
-          //                             `<a href="/create">create</a>`);
-          //   response.writeHead(200);
-          //   response.end(html);
-          // });
-
-          // 이제는 DB에 접근하여 DB 정보를 출력할 것이다.
           db.query(`SELECT * FROM topic`, function(error, topics, fields) {
-            console.log(topics);
+            var title = 'Welcome';
+            var description = 'Hello, Node.js';
+            var list = template.list(topics);
+            var html = template.html(title, 
+                                      list, 
+                                      `<h2>${title}</h2>${description}`, 
+                                      `<a href="/create">create</a>`);
             response.writeHead(200);
-            response.end('Success');
+            response.end(html);
           });
       } else {
-        // fs.readdir('./data', function(error, fileList) {
-        //   var filteredId = path.parse(queryData.id).base;
-        //   fs.readFile(`data/${filteredId}`, 'utf8', function(err, description) {
-        //     var title = queryData.id;
-        //     var sanitizedTitle = sanitizeHtml(title); // html 소독하기
-        //     var sanitizedDescription = sanitizeHtml(description, {
-        //       allowdTags: ['h1'] // 특정 태그는 소독하지 않고 유지하기
-        //     });
-        //     var list = template.list(fileList);
-        //     var html = template.html(sanitizedTitle, 
-        //                               list, 
-        //                               `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-        //                               `<a href="/create">create</a>
-        //                                 <a href="/update?id=${sanitizedTitle}">update</a>
-        //                                 <form action="/delete_process" method="post">
-        //                                 <input type="hidden" name="id" value="${sanitizedTitle}"/>
-        //                                 <input type="submit" value="delete" />
-        //                                 </form>`
-        //     );
+        db.query(`SELECT * FROM topic`, function(error, topics, fields) {
+          if(error) { // 에러가 발생하면 error를 던지면서 애플리케이션을 중지시킨다.
+            throw error;
+          } 
+          
+          // [queryData.id]가 자동으로 '?'에 치환되어 삽입된다.
+          db.query(`SELECT * FROM topic WHERE id=?`, [queryData.id], function(error2, topic) {
+            if(error2) { // 중지시킴2
+              throw error2;
+            }
 
-        //     response.writeHead(200);
-        //     response.end(html);
-        //   });
-        // });
+            var title       = topic[0].title;
+            var description = topic[0].description;
+            var list = template.list(topics);
+            var html = template.html(title, list, 
+                                      `<h2>${title}</h2>${description}`, 
+                                      `<a href="/create">create</a>
+                                      <a href="/update?id=${queryData.id}">update</a>
+                                      <form action="/depete_process" method="post">
+                                        <input type="hidden" name="id" value="${queryData.id}" />
+                                        <input type="submit" value="delete" />
+                                      </form>`
+            );
 
-        
+            response.writeHead(200);
+            response.end(html);
+          });
+        });
       }
     } else if(pathname === '/create') {
       fs.readdir('./data', function(error, fileList) {
