@@ -7,176 +7,189 @@ var path = require('path');
 var sanitizeHtml = require('sanitize-html');
 var mysql = require('mysql');
 var db = mysql.createConnection({ // mysql 접속 설정
-  host: 'localhost',
-  user: 'root',
-  password: '111111',
-  database: 'opentutorials'
+	host: 'localhost',
+	user: 'root',
+	password: '111111',
+	database: 'opentutorials'
 });
 db.connect(); // 실제 접속
 
-var app = http.createServer(function(request,response){
-    var _url = request.url;
-    var queryData = url.parse(_url, true).query;
-    var pathname = url.parse(_url, true).pathname;
+var app = http.createServer(function (request, response) {
+	var _url = request.url;
+	var queryData = url.parse(_url, true).query;
+	var pathname = url.parse(_url, true).pathname;
 
-    if(pathname === '/') {
-      if(queryData.id === undefined) {
-          db.query(`SELECT * FROM topic`, function(error, topics, fields) {
-            var title = 'Welcome';
-            var description = 'Hello, Node.js';
-            var list = template.list(topics);
-            var html = template.html(title, 
-                                      list, 
-                                      `<h2>${title}</h2>${description}`, 
-                                      `<a href="/create">create</a>`);
-            response.writeHead(200);
-            response.end(html);
-          });
-      } else {
-        db.query(`SELECT * FROM topic`, function(error, topics, fields) {
-          if(error) { // 에러가 발생하면 error를 던지면서 애플리케이션을 중지시킨다.
-            throw error;
-          } 
-          
-          // [queryData.id]가 자동으로 '?'에 치환되어 삽입된다.
-          db.query(`SELECT * FROM topic WHERE id=?`, [queryData.id], function(error2, topic) {
-            if(error2) { // 중지시킴2
-              throw error2;
-            }
+	if (pathname === '/') {
+		if (queryData.id === undefined) {
+			db.query(`SELECT * FROM topic`, function (error, topics, fields) {
+				var title = 'Welcome';
+				var description = 'Hello, Node.js';
+				var list = template.list(topics);
+				var html = template.html(title,
+					list,
+					`<h2>${title}</h2>${description}`,
+					`<a href="/create">create</a>`);
+				response.writeHead(200);
+				response.end(html);
+			});
+		} else {
+			db.query(`SELECT * FROM topic`, function (error, topics, fields) {
+				if (error) throw error;
 
-            var title       = topic[0].title;
-            var description = topic[0].description;
-            var list = template.list(topics);
-            var html = template.html(title, list, 
-                                      `<h2>${title}</h2>${description}`, 
-                                      `<a href="/create">create</a>
-                                      <a href="/update?id=${queryData.id}">update</a>
-                                      <form action="/depete_process" method="post">
-                                        <input type="hidden" name="id" value="${queryData.id}" />
-                                        <input type="submit" value="delete" />
-                                      </form>`
-            );
+				// [queryData.id]가 자동으로 '?'에 치환되어 삽입된다.
+				db.query(`SELECT * FROM topic LEFT JOIN author ON topic.author_id = author.id WHERE topic.id=?`, [queryData.id], function (error2, topic) {
+					if (error2) throw error2;
 
-            response.writeHead(200);
-            response.end(html);
-          });
-        });
-      }
-    } else if(pathname === '/create') {
-      fs.readdir('./data', function(error, fileList) {
-        var title = 'WEB - create';
-        var list = template.list(fileList);
-        var html = template.html(title, list, `
-          <form action="/create_process" method="post">
-            <p>
-              <input type="text" name="title" placeholder="title" />
-            </p>
-            <p>
-              <textarea name="description" placeholder="description"></textarea>
-            </p>
-            <p>
-              <input type="submit" />
-            </p>
-          </form>
-        `, '');
-        response.writeHead(200);
-        response.end(html);
-      });
-    } else if(pathname === '/create_process') {
-      var body = '';
+					var title = topic[0].title;
+					var description = topic[0].description;
+					var list = template.list(topics);
+					var html = template.html(title, list,
+						`<h2>${title}</h2>
+						${description} 
+						<p>
+							by ${topic[0].name}
+						</p>`,
+						`<a href="/create">create</a>
+						<a href="/update?id=${queryData.id}">update</a>
+						<form action="/delete_process" method="post">
+							<input type="hidden" name="id" value="${queryData.id}" />
+							<input type="submit" value="delete" />
+						</form>`
+					);
 
-      // createServer의 콜백함수 내 매개변수 이용 request, response
-      request.on('data', function(data) {
-        body = body + data;
-      }); 
+					response.writeHead(200);
+					response.end(html);
+				});
+			});
+		}
+	} else if (pathname === '/create') {
+		db.query(`SELECT * FROM topic`, function (error, topics, fields) {
+			if(error) throw error;
 
-      request.on('end', function() { // 더이상 들어 올 정보가 없으면 'end'의 콜백함수를 호출한다.
-        var post = qs.parse(body); // 정보를 객체화할 수 있다.
-        var title = post.title;
-        var description = post.description;
+			var title = 'CREATE';
+			var list = template.list(topics);
+			var html = template.html(title, list,
+				`<form action="/create_process" method="post">
+                                  <p>
+                                    <input type="text" name="title" placeholder="title" />
+                                  </p>
+                                  <p>
+                                    <textarea name="description" placeholder="description"></textarea>
+                                  </p>
+                                  <p>
+                                    <input type="submit" />
+                                  </p>
+                                </form>`,
+				`<a href="/create">create</a>`
+			);
 
-        // 파일을 생성하고 작성하기
-        fs.writeFile(`data/${title}`, description, 'utf8', function(err) {
-          response.writeHead(301, { // 301 : 이 웹주소는 해당 주소로 지금 바뀌었습니다!
-            location: `/?id=${title}`
-          }); 
-          response.end('success');
-        });
-      });
-    } else if(pathname === '/update') {
-      // ***** 기존 정보 수정하기
-      fs.readdir('./data', function(error, fileList) {
-        var filteredId = path.parse(queryData.id).base;
-        fs.readFile(`data/${filteredId}`, 'utf8', function(err, description) {
-          var title = queryData.id;
-          var list = template.list(fileList);
-          var html = template.html(title, 
-                                  list, 
-                                  `
-                                  <form action="/update_process" method="post">
-                                    <input type="hidden" name="id" value="${title}" />
-                                    <p>
-                                      <input type="text" name="title" placeholder="title" value="${title}"/>
-                                    </p>
-                                    <p>
-                                      <textarea name="description" placeholder="description">${description}</textarea>
-                                    </p>
-                                    <p>
-                                      <input type="submit" />
-                                    </p>
-                                  </form>
-                                  `,
-                                  `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`);
-          response.writeHead(200);
-          response.end(html);
-        });
-      });
-    } else if(pathname === '/update_process') {
-      var body = '';
+			response.writeHead(200);
+			response.end(html);
+		});
+	} else if (pathname === '/create_process') {
+		var body = '';
+		request.on('data', function (data) {
+			body = body + data;
+		});
+		request.on('end', function () { // 더이상 들어 올 정보가 없으면 'end'의 콜백함수를 호출한다.
+			var post = qs.parse(body); // 정보를 객체화할 수 있다.
 
-      // createServer의 콜백함수 내 매개변수 이용 request, response
-      request.on('data', function(data) {
-        body = body + data;
-      }); 
+			db.query( // DB에 파일명, 내용 저장하기
+				`INSERT INTO topic(title, description, created, author_id) VALUES(?, ?, now(), ?)`,
+				[post.title, post.description, 1],
+				function (error, result) {
+					if (error) {
+						throw error;
+					}
 
-      request.on('end', function() { // 더이상 들어 올 정보가 없으면 'end'의 콜백함수를 호출한다.
-        var post        = qs.parse(body); // 정보를 객체화할 수 있다.
-        var title       = post.title;
-        var id          = post.id;
-        var description = post.description;
+					response.writeHead(302, { location: `/?id=${result.insertId}` });
+					response.end();
+				}
+			)
+		});
+	} else if (pathname === '/update') { // ***** 정보 수정화면으로 진입
+		// 전체 한번 조회 후 수정하는 글 내용 보여주기 - 리스트는 보여져야 하니까.
+		db.query(`SELECT * FROM topic`, function (error, topics) {
+			if (error) throw error;
+			
+			db.query(`SELECT * FROM topic WHERE id=?`, [queryData.id], function (error2, topic, fields) {
+				if(error2) throw error2;
 
-        fs.rename(`data/${id}`, `data/${title}`, function(error) {
-          // 파일 수정하기
-          fs.writeFile(`data/${title}`, description, 'utf8', function(err) {
-            response.writeHead(301, { // 301 : 이 웹주소는 해당 주소로 지금 바뀌었습니다!
-              location: `/?id=${title}`
-            }); 
-            response.end('success');
-          });
-        });
-      });
-    } else if(pathname === '/delete_process') {
-      var body = '';
+				db.query(`SELECT * FROM author`, function (error3, authors) {
+					var list = template.list(topics);
+					var html = template.html(topic[0].title, list,
+						`<form action="/update_process" method="post">
+							<input type="hidden" name="id" value="${topic[0].id}" />
+							<p>
+								<input type="text" name="title" placeholder="title" value="${topic[0].title}" />
+							</p>
+							<p>
+								<textarea name="description" placeholder="description">${topic[0].description}</textarea>
+							</p>
+							<p>
+								${template.authorSelect(authors, topic[0].author_id)}
+							</p>
+							<p>
+								<input type="submit" />
+							</p>
+						</form>`,
+						`<a href="/create">create</a> <a href="/update?id=${topic[0].id}">update</a>`
+					);
+	
+					response.writeHead(200);
+					response.end(html);
+				});
 
-      // createServer의 콜백함수 내 매개변수 이용 request, response
-      request.on('data', function(data) {
-        body = body + data;
-      }); 
+			});
+		});
+	} else if (pathname === '/update_process') {
+		var body = '';
+		request.on('data', function (data) {
+			body = body + data;
+		});
 
-      request.on('end', function() {
-        var post = qs.parse(body);
-        var id   = post.id;
+		request.on('end', function () {
+			var post = qs.parse(body);
 
-        var filteredId = path.parse(id).base;
-        fs.unlink(`data/${filteredId}`, function(error) {
-          // 삭제가 끝나면 home 경로로 보낸다.
-          response.writeHead(302, { location: '/' }); 
-          response.end();
-        });
-      });
-    } else {
-      response.writeHead(404);
-      response.end('Not found');
-    }
+			// DB 수정하기
+			db.query(
+				`UPDATE topic SET title=?, description=?, author_id=? WHERE id=?`
+				, [post.title, post.description, post.author, post.id]
+				, function(error, result) {
+					if(error) {
+						throw error;
+					}
+
+					response.writeHead(302, {location: `/?id=${post.id}`});
+					response.end();
+				}
+			)
+		});
+	} else if (pathname === '/delete_process') {
+		var body = '';
+		request.on('data', function (data) {
+			body = body + data;
+		});
+
+		// DB 삭제하기
+		request.on('end', function () {
+			var post = qs.parse(body);
+			db.query(
+				`DELETE FROM topic WHERE id=?`
+				, [post.id]
+				, function(error, result) {
+					if(error) {
+						throw error;
+					}
+
+					response.writeHead(302, {location: `/`});
+					response.end();
+				}
+			)
+		});
+	} else {
+		response.writeHead(404);
+		response.end('Not found');
+	}
 });
 app.listen(3000);
