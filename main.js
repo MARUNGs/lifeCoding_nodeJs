@@ -28,8 +28,12 @@ var app = http.createServer(function (request, response) {
 		author.home(request, response);
 	} else if(pathname === '/author/create_process') { // 저자 등록
 		author.create_author_process(request, response);
-	} else if(pathname === '/author/update') { // 저자 수정
+	} else if(pathname === '/author/update') { // 저자 수정화면
 		author.update(request, response);
+	} else if(pathname === '/author/update_process') { // 저자 수정
+		author.update_process(request, response);
+	} else if(pathname === '/author/delete_process') { // 저자 삭제
+		author.delete_process(request, response);
 	} else {
 		topic.notFound(request, response); // not found
 	}
